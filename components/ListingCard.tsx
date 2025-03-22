@@ -3,20 +3,27 @@ import React, { useState } from "react";
 import { Link } from "expo-router";
 import { icons } from "@/constants/icons";
 
-interface Item {
+interface Product {
   id: string;
   p_name: string;
-  p_image: string[];
+  p_image: string[]; // Changed to an array of images
   p_date: string;
   p_url: string;
   p_likes: number;
   p_owner: string;
   p_price: string;
-  p_desc: string;
   p_short: string;
+  p_desc: string;
   p_pickup: string;
   p_liked: string;
   p_category: string[];
+  p_user_image: string;
+  p_stars: number;
+  p_reviews: {
+    review_stars: number;
+    reviewer_name: string;
+    review_text: string;
+  }[];
 }
 
 const ListingCard = ({
@@ -33,7 +40,10 @@ const ListingCard = ({
   p_pickup,
   p_liked,
   p_category,
-}: Item) => {
+  p_user_image,
+  p_stars,
+  p_reviews,
+}: Product) => {
   const [liked, setLiked] = useState(false);
   return (
     <Link href={`/listings/${id}`} asChild>

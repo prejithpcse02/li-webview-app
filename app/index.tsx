@@ -11,10 +11,10 @@ const Index = () => {
       <Text className="text-lg text-gray-700 mb-6 text-center">
         Discover amazing listings with just one tap!
       </Text>
-      <Link href="/listings" asChild>
+      <Link href="/users/signin" asChild>
         <TouchableOpacity className="bg-blue-600 px-6 py-3 rounded-full shadow-md">
           <Text className="text-white text-lg font-semibold">
-            View Listings
+            Explore Listings
           </Text>
         </TouchableOpacity>
       </Link>

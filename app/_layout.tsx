@@ -12,6 +12,9 @@ export default function RootLayout() {
         options={{ headerShown: false }}
       />
       <Stack.Screen name="search/searchlist" options={{ headerShown: false }} />
+      <Stack.Screen name="users/signin" options={{ headerShown: false }} />
+      <Stack.Screen name="users/signup" options={{ headerShown: false }} />
+      <Stack.Screen name="users/forgot" options={{ headerShown: false }} />
     </Stack>
   );
 }

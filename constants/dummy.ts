@@ -2,7 +2,7 @@ const dummy = [
   {
     id: "p01",
     p_name:
-      "Samsung Galaxy S23 Ultra 5G (Green, 12GB RAM, 256GB Storage) | 200MP Camera | S Pen | Snapdragon 8 Gen 2",
+      "Samsung Galaxy S23 Ultra 5G (Green, 12GB RAM, 256GB Storage) | 200MP Cameras | S Pen | Snapdragon 8 Gen 2",
     p_image: [
       "https://m.media-amazon.com/images/I/61VfL-aiToL._SL1500_.jpg",
       "https://m.media-amazon.com/images/I/71czPpRihgL._SL1500_.jpg",
@@ -15,10 +15,20 @@ const dummy = [
     p_price: "₹1,24,999.00",
     p_short: "Lightly used",
     p_desc:
-      "Lightly used Samsung Galaxy S23 Ultra with a powerful 200MP camera, S Pen, and Snapdragon 8 Gen 2 processor.",
+      "Lightly used Samsung Galaxy S23 Ultra with a powerful 200MP Cameras, S Pen, and Snapdragon 8 Gen 2 processor.",
     p_pickup: "Ormond VIC 3102",
     p_liked: "true",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Mobiles", "Gadgets", "Electronics"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p02",
@@ -35,15 +45,25 @@ const dummy = [
     p_price: "₹349.00",
     p_short: "Like new",
     p_desc:
-      "boAt Bassheads 100 wired earphones offer powerful bass, an in-line microphone, and a comfortable fit, perfect for music lovers.",
+      "boAt Bassheads 100 wired Earphones offer powerful bass, an in-line microphone, and a comfortable fit, perfect for music lovers.",
     p_pickup: "Ormond VIC 3102",
     p_liked: "false",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Earphones", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p03",
     p_name:
-      "iQOO Z9 Lite 5G (Aqua Flow, 6GB RAM, 128GB Storage) | Dimensity 6300 5G | 50MP Sony AI Camera | Charger in The Box",
+      "iQOO Z9 Lite 5G (Aqua Flow, 6GB RAM, 128GB Storage) | Dimensity 6300 5G | 50MP Sony AI Cameras | Charger in The Box",
     p_image: ["https://m.media-amazon.com/images/I/71V--WZVUIL._SL1500_.jpg"],
     p_date: "2025-03-12",
     p_url: "https://www.amazon.in/dp/B0B5XJH9H7",
@@ -52,10 +72,20 @@ const dummy = [
     p_price: "₹15,999.00",
     p_short: "Like new",
     p_desc:
-      "The iQOO Z9 Lite 5G smartphone features a Dimensity 6300 processor, 50MP Sony AI camera, 6GB RAM, and 128GB storage for a smooth experience.",
+      "The iQOO Z9 Lite 5G smartphone features a Dimensity 6300 processor, 50MP Sony AI Cameras, 6GB RAM, and 128GB storage for a smooth experience.",
     p_pickup: "Melbourne VIC 3102",
     p_liked: "true",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Mobiles", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p04",
@@ -69,19 +99,29 @@ const dummy = [
     p_date: "2025-03-12",
     p_url: "https://www.amazon.in/dp/B08XJCMGL7",
     p_likes: 210601,
-    p_owner: "Marnus",
+    p_owner: "David",
     p_price: "₹1,499.00",
     p_short: "Well used",
     p_desc:
       "Enjoy long-lasting music with boAt Rockerz 255 Pro+ wireless neckband, offering 60-hour battery life, fast charging, and IPX7 water resistance.",
     p_pickup: "Perth VIC 3102",
     p_liked: "true",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Earphones", "Gadgets", "Hearables"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "Simon",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p05",
     p_name:
-      "Redmi A4 5G (Sparkle Purple, 4GB RAM, 128GB Storage) | Global Debut SD 4s Gen 2 | Segment Largest 6.88in 120Hz | 50MP Dual Camera | 18W Fast Charging",
+      "Redmi A4 5G (Sparkle Purple, 4GB RAM, 128GB Storage) | Global Debut SD 4s Gen 2 | Segment Largest 6.88in 120Hz | 50MP Dual Cameras | 18W Fast Charging",
     p_image: ["https://m.media-amazon.com/images/I/81zLNgcvlaL._SL1500_.jpg"],
     p_date: "2025-03-12",
     p_url: "https://www.amazon.in/dp/B0B8KJ1F2G",
@@ -90,10 +130,20 @@ const dummy = [
     p_price: "₹13,499.00",
     p_short: "Heavily used",
     p_desc:
-      "The Redmi A4 5G smartphone boasts a 6.88-inch 120Hz display, 50MP dual camera setup, and Snapdragon 4s Gen 2 processor for a seamless experience.",
+      "The Redmi A4 5G smartphone boasts a 6.88-inch 120Hz display, 50MP dual Cameras setup, and Snapdragon 4s Gen 2 processor for a seamless experience.",
     p_pickup: "Ormond VIC 3102",
     p_liked: "false",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Mobiles", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p06",
@@ -110,7 +160,17 @@ const dummy = [
       "Experience crystal-clear audio with OnePlus Nord Buds 2r, offering 12.4mm drivers, long battery life, and IP55 dust & water resistance.",
     p_pickup: "Melbourne VIC 3102",
     p_liked: "false",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Earphones", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p07",
@@ -127,7 +187,17 @@ const dummy = [
       "Apple MacBook Air with M2 chip delivers top-tier performance, a stunning 15.3-inch Liquid Retina display, and seamless macOS experience.",
     p_pickup: "Ormond VIC 3102",
     p_liked: "true",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Laptops", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p08",
@@ -140,10 +210,20 @@ const dummy = [
     p_price: "₹1,59,900.00",
     p_short: "Brand new",
     p_desc:
-      "Brand new Apple iPhone 15 Pro Max with A17 Pro chip, 48MP camera system, and stunning titanium design.",
+      "Brand new Apple iPhone 15 Pro Max with A17 Pro chip, 48MP Cameras system, and stunning titanium design.",
     p_pickup: "Perth VIC 3102",
     p_liked: "true",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Mobiles", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p09",
@@ -159,7 +239,17 @@ const dummy = [
       "Experience industry-leading noise cancellation with Sony WH-1000XM5, featuring up to 30 hours of battery life.",
     p_pickup: "Ormond VIC 3102",
     p_liked: "true",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Earphones", "Gadgets", "Hearables"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p10",
@@ -176,7 +266,17 @@ const dummy = [
       "HP Pavilion Aero ultra-light laptop with AMD Ryzen 5, 16GB RAM, and 512GB SSD for a seamless computing experience.",
     p_pickup: "Ormond VIC 3102",
     p_liked: "false",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Laptops", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p11",
@@ -186,14 +286,24 @@ const dummy = [
     p_date: "2025-03-12",
     p_url: "https://www.amazon.in/dp/B09TFBLQ8Z",
     p_likes: 5243,
-    p_owner: "Derek",
+    p_owner: "David",
     p_price: "₹46,999.00",
     p_short: "Well used",
     p_desc:
       "Samsung Crystal 4K UHD Smart TV with HDR, Dolby Digital Plus, and multiple voice assistant support.",
     p_pickup: "Ormond VIC 3102",
     p_liked: "false",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Laptops", "Gadgets", "Electronics"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "Pat",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p12",
@@ -210,7 +320,17 @@ const dummy = [
       "Alienware M15 R7 gaming laptop with Ryzen 7, RTX 3070Ti, and 165Hz display for the ultimate gaming experience.",
     p_pickup: "Melbourne VIC 3102",
     p_liked: "true",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Laptops", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p13",
@@ -227,11 +347,21 @@ const dummy = [
       "Apple Watch Series 9 with GPS + Cellular, featuring the latest health tracking and always-on Retina display.",
     p_pickup: "Ormond VIC 3102",
     p_liked: "false",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Watches", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p14",
-    p_name: "Canon EOS R6 Mirrorless Camera with RF 24-105mm Lens",
+    p_name: "Canon EOS R6 Mirrorless Cameras with RF 24-105mm Lens",
     p_image: ["https://m.media-amazon.com/images/I/71BMrvcTwJL._SL1500_.jpg"],
     p_date: "2025-03-12",
     p_url: "https://www.amazon.in/dp/B08HRWB7QW",
@@ -240,10 +370,20 @@ const dummy = [
     p_price: "₹2,19,999.00",
     p_short: "Lightly used",
     p_desc:
-      "Canon EOS R6 mirrorless camera with 20MP full-frame sensor and 4K video recording for professional photography.",
+      "Canon EOS R6 mirrorless Camera with 20MP full-frame sensor and 4K video recording for professional photography.",
     p_pickup: "Ormond VIC 3102",
     p_liked: "false",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Cameras", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p15",
@@ -260,7 +400,17 @@ const dummy = [
       "Asus ROG Strix G16 gaming laptop with powerful RTX 4060 GPU, 165Hz refresh rate, and robust cooling system.",
     p_pickup: "Brisbane VIC 3102",
     p_liked: "false",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Laptops", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p16",
@@ -276,7 +426,17 @@ const dummy = [
       "Bose QuietComfort 45 headphones with advanced noise cancellation and long battery life for immersive audio experience.",
     p_pickup: "Ormond VIC 3102",
     p_liked: "false",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Earphones", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
   {
     id: "p17",
@@ -293,7 +453,17 @@ const dummy = [
       "JBL PartyBox 310 with dynamic light effects, powerful sound, and 18-hour battery life for non-stop parties.",
     p_pickup: "Melbourne VIC 3102",
     p_liked: "false",
-    p_category: ["mobiles", "gadgets"],
+    p_category: ["Hearables", "Gadgets"],
+    p_user_image:
+      "https://as2.ftcdn.net/v2/jpg/02/30/47/39/1000_F_230473957_2G1g6qz6VY5QvZx0p5G8f6L0bNFU2g6S.jpg",
+    p_reviews: [
+      {
+        review_text: "Very good product and seller.",
+        review_stars: 4,
+        reviewer_name: "James",
+      },
+    ],
+    p_stars: 3,
   },
 ];
 

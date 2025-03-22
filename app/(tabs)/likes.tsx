@@ -14,7 +14,7 @@ import dummy from "@/constants/dummy";
 interface Product {
   id: string;
   p_name: string;
-  p_image: string[]; // Changed to an array of images
+  p_image: string[];
   p_date: string;
   p_url: string;
   p_likes: number;
@@ -25,6 +25,13 @@ interface Product {
   p_pickup: string;
   p_liked: string;
   p_category: string[];
+  p_user_image: string;
+  p_stars: number;
+  p_reviews: {
+    review_stars: number;
+    reviewer_name: string;
+    review_text: string;
+  }[];
 }
 
 const likes = () => {
