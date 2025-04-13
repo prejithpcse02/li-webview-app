@@ -1,20 +1,39 @@
 import SearchBar from "@/components/SearchBar";
 import React, { useEffect, useState, useRef } from "react";
 import { View } from "react-native";
-import { WebView } from "react-native-webview";
-import { useRouter } from "expo-router";
+import { WebView, WebViewNavigation } from "react-native-webview";
+import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TokenStorage } from "../../services/tokenStorage";
 import { useAuth } from "../../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "@react-navigation/native";
 
 const listings = () => {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [injectedJS, setInjectedJS] = useState<string>("");
   const webViewRef = useRef<WebView>(null);
-  const listingsUrl = "https://li-webjs-frontend.vercel.app/listings";
+
+  // Check for refresh flag when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const checkRefreshFlag = async () => {
+        const needsRefresh = await AsyncStorage.getItem(
+          "listings_page_needs_refresh"
+        );
+        if (needsRefresh === "true") {
+          // Clear the flag
+          await AsyncStorage.removeItem("listings_page_needs_refresh");
+          // Reload the WebView
+          if (webViewRef.current) {
+            webViewRef.current.reload();
+          }
+        }
+      };
+
+      checkRefreshFlag();
+    }, [])
+  );
 
   // Function to inject JavaScript that listens for like/unlike events
   const prepareInjectedJavaScript = async () => {
@@ -137,15 +156,6 @@ const listings = () => {
     }
   };
 
-  // Add this function to reload the WebView when the tab is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      if (webViewRef.current) {
-        webViewRef.current.reload();
-      }
-    }, [])
-  );
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
       <SearchBar
@@ -156,14 +166,13 @@ const listings = () => {
         <WebView
           ref={webViewRef}
           source={{
-            uri: listingsUrl,
+            uri: "https://li-webjs-frontend.vercel.app/listings",
           }}
           style={{ flex: 1, marginBottom: 60, marginTop: 10 }}
           injectedJavaScript={injectedJS}
           originWhitelist={["*"]}
           allowUniversalAccessFromFileURLs={true}
           onMessage={handleWebViewMessage}
-          // Add these props to improve WebView behavior
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}

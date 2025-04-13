@@ -12,39 +12,80 @@ import {
   Alert,
   Platform,
   Modal,
-  Dimensions
+  Dimensions,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
-import * as ImagePicker from 'expo-image-picker';
-import axios from 'axios';
+import * as ImagePicker from "expo-image-picker";
+import axios from "axios";
 import { useCallback } from "react";
+import { TokenStorage } from "@/services/tokenStorage";
+import { useAuth } from "@/context/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaView as SafeAreaViewContext } from "react-native-safe-area-context";
 
 // Constants for form validation and dropdown options
 const CATEGORIES = [
-  "Electronics", "Mobile Phones", "Computers & Accessories", 
-  "Fashion", "Men's Clothing", "Women's Clothing", "Shoes", "Accessories",
-  "Home & Garden", "Furniture", "Kitchen & Dining", "Home Decor", 
-  "Books & Media", "Books", "Music", "Movies", "Video Games",
-  "Sports & Outdoors", "Sporting Goods", "Outdoor Recreation", "Exercise Equipment",
-  "Toys & Hobbies", "Toys", "Collectibles", "Arts & Crafts",
-  "Beauty & Health", "Makeup", "Skincare", "Health Equipment",
-  "Vehicles", "Cars", "Motorcycles", "Bicycles", "Auto Parts",
-  "Services", "Other"
+  "Electronics",
+  "Mobile Phones",
+  "Computers & Accessories",
+  "Fashion",
+  "Men's Clothing",
+  "Women's Clothing",
+  "Shoes",
+  "Accessories",
+  "Home & Garden",
+  "Furniture",
+  "Kitchen & Dining",
+  "Home Decor",
+  "Books & Media",
+  "Books",
+  "Music",
+  "Movies",
+  "Video Games",
+  "Sports & Outdoors",
+  "Sporting Goods",
+  "Outdoor Recreation",
+  "Exercise Equipment",
+  "Toys & Hobbies",
+  "Toys",
+  "Collectibles",
+  "Arts & Crafts",
+  "Beauty & Health",
+  "Makeup",
+  "Skincare",
+  "Health Equipment",
+  "Vehicles",
+  "Cars",
+  "Motorcycles",
+  "Bicycles",
+  "Auto Parts",
+  "Services",
+  "Other",
 ];
 
-const CONDITIONS = ["New", "Like New", "Lightly Used", "Well Used", "Heavily Used"];
+const CONDITIONS = [
+  "new",
+  "like_new",
+  "lightly_used",
+  "well_used",
+  "heavily_used",
+];
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const AddItem = () => {
   const router = useRouter();
-  
+  const { refreshToken, checkTokenValidity } = useAuth();
+
   // Step management
   const [currentStep, setCurrentStep] = useState(1);
-  
+
+  // Add state for WebView reference
+  const [webViewRef, setWebViewRef] = useState(null);
+
   // Form state
   const [formData, setFormData] = useState({
     title: "",
@@ -52,24 +93,25 @@ const AddItem = () => {
     price: "",
     category: CATEGORIES[0],
     condition: CONDITIONS[0],
-    location: ""
+    location: "",
   });
-  
+
   // Image handling state
   const [images, setImages] = useState<string[]>([]);
   const [mainImageIndex, setMainImageIndex] = useState(0);
   const [isPickingImage, setIsPickingImage] = useState(false);
-  
+
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
-  
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
   // Loading state
   const [isLoading, setIsLoading] = useState(false);
 
   // Add state for dropdown visibility
   const [categoryDropdownVisible, setCategoryDropdownVisible] = useState(false);
-  const [conditionDropdownVisible, setConditionDropdownVisible] = useState(false);
+  const [conditionDropdownVisible, setConditionDropdownVisible] =
+    useState(false);
 
   // Reset form when the component is focused again
   useFocusEffect(
@@ -78,7 +120,7 @@ const AddItem = () => {
       const resetForm = () => {
         // Reset to first page
         setCurrentStep(1);
-        
+
         // Reset form data
         setFormData({
           title: "",
@@ -86,20 +128,20 @@ const AddItem = () => {
           price: "",
           category: CATEGORIES[0],
           condition: CONDITIONS[0],
-          location: ""
+          location: "",
         });
-        
+
         // Reset images
         setImages([]);
         setMainImageIndex(0);
-        
+
         // Clear errors
         setFormErrors({});
       };
-      
+
       // Reset the form when component is focused
       resetForm();
-      
+
       // No cleanup function needed
       return () => {};
     }, [])
@@ -119,9 +161,9 @@ const AddItem = () => {
       // Show alert after a small delay to ensure it's visible
       setTimeout(() => {
         Alert.alert(
-          'Images Required',
-          'At least one image is required. Please select an image to continue.',
-          [{text: 'OK'}]
+          "Images Required",
+          "At least one image is required. Please select an image to continue.",
+          [{ text: "OK" }]
         );
       }, 100);
     }
@@ -129,15 +171,16 @@ const AddItem = () => {
 
   // Request permissions for photo library access
   const requestMediaLibraryPermissions = async () => {
-    if (Platform.OS !== 'web') {
+    if (Platform.OS !== "web") {
       setIsLoading(true);
       try {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
           Alert.alert(
-            'Permission Needed',
-            'We need permission to access your photo library so you can select images for your listings.',
-            [{ text: 'OK' }]
+            "Permission Needed",
+            "We need permission to access your photo library so you can select images for your listings.",
+            [{ text: "OK" }]
           );
         }
       } finally {
@@ -149,16 +192,16 @@ const AddItem = () => {
   // Handle input changes
   const handleInputChange = (field: string, value: string) => {
     // Special handling for price field - only allow numbers and decimal
-    if (field === 'price') {
+    if (field === "price") {
       // Validate price input (numbers and one decimal point only)
-      if (value === '' || /^\d+(\.\d{0,2})?$/.test(value)) {
+      if (value === "" || /^\d+(\.\d{0,2})?$/.test(value)) {
         setFormData({ ...formData, [field]: value });
       }
       return;
     }
-    
+
     setFormData({ ...formData, [field]: value });
-    
+
     // Clear error when field is being edited
     if (formErrors[field]) {
       const newErrors = { ...formErrors };
@@ -170,12 +213,15 @@ const AddItem = () => {
   // Pick image from gallery
   const pickImage = async () => {
     if (images.length >= MAX_IMAGES) {
-      Alert.alert('Maximum Images', `You can only upload up to ${MAX_IMAGES} images`);
+      Alert.alert(
+        "Maximum Images",
+        `You can only upload up to ${MAX_IMAGES} images`
+      );
       return;
     }
 
     setIsPickingImage(true);
-    
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -186,56 +232,64 @@ const AddItem = () => {
         allowsMultipleSelection: true,
         selectionLimit: MAX_IMAGES - images.length,
       });
-      
+
       if (!result.canceled && result.assets && result.assets.length > 0) {
         // Handle multiple selections
         const newImages = [...images];
         let sizeExceeded = false;
         let imagesAdded = 0;
-        
+
         // Process each selected asset
         for (const selectedAsset of result.assets) {
           // Check file size if available
-          if (selectedAsset.fileSize && selectedAsset.fileSize > MAX_IMAGE_SIZE) {
+          if (
+            selectedAsset.fileSize &&
+            selectedAsset.fileSize > MAX_IMAGE_SIZE
+          ) {
             sizeExceeded = true;
             continue;
           }
-          
+
           // Add the image if we haven't hit the limit
           if (newImages.length < MAX_IMAGES) {
             newImages.push(selectedAsset.uri);
             imagesAdded++;
           }
         }
-        
+
         // Update images state
         setImages(newImages);
-        
+
         // If this is the first image, make it the main image
         if (images.length === 0 && newImages.length > 0) {
           setMainImageIndex(0);
         }
-        
+
         // Show appropriate feedback
         if (imagesAdded > 0) {
           if (sizeExceeded) {
             Alert.alert(
-              'Some Images Added', 
-              `Added ${imagesAdded} photo${imagesAdded > 1 ? 's' : ''}. Some images were skipped because they exceeded the 5MB size limit.`
+              "Some Images Added",
+              `Added ${imagesAdded} photo${
+                imagesAdded > 1 ? "s" : ""
+              }. Some images were skipped because they exceeded the 5MB size limit.`
             );
           } else if (newImages.length === MAX_IMAGES) {
             Alert.alert(
-              'Maximum Images', 
+              "Maximum Images",
               `You've reached the maximum of ${MAX_IMAGES} images.`
             );
           }
         } else if (sizeExceeded) {
-          Alert.alert('Images Too Large', 'All selected images exceeded the 5MB size limit. Please select smaller images.');
+          Alert.alert(
+            "Images Too Large",
+            "All selected images exceeded the 5MB size limit. Please select smaller images."
+          );
         }
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to select images. Please try again.');
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to select images. Please try again.");
     } finally {
       setIsPickingImage(false);
     }
@@ -246,7 +300,7 @@ const AddItem = () => {
     const newImages = [...images];
     newImages.splice(index, 1);
     setImages(newImages);
-    
+
     // Update main image index if needed
     if (mainImageIndex === index) {
       // If we removed the main image, set the first available image as main
@@ -264,30 +318,33 @@ const AddItem = () => {
 
   // Validate form
   const validateForm = () => {
-    const errors: {[key: string]: string} = {};
-    
+    const errors: { [key: string]: string } = {};
+
     if (!formData.title.trim()) {
-      errors.title = 'Title is required';
+      errors.title = "Title is required";
     }
-    
+
     if (!formData.description.trim()) {
-      errors.description = 'Description is required';
+      errors.description = "Description is required";
     }
-    
+
     if (!formData.price) {
-      errors.price = 'Price is required';
-    } else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
-      errors.price = 'Price must be a positive number';
+      errors.price = "Price is required";
+    } else if (
+      isNaN(parseFloat(formData.price)) ||
+      parseFloat(formData.price) <= 0
+    ) {
+      errors.price = "Price must be a positive number";
     }
-    
+
     if (!formData.location.trim()) {
-      errors.location = 'Location is required';
+      errors.location = "Location is required";
     }
-    
+
     if (images.length === 0) {
-      errors.images = 'At least one image is required';
+      errors.images = "At least one image is required";
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -295,18 +352,176 @@ const AddItem = () => {
   // Submit form
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
+
     try {
       // Basic validation for form completeness (simplified)
-      if (!formData.title || !formData.description || !formData.price || !formData.location || images.length === 0) {
-        Alert.alert('Missing Information', 'Please fill all required fields and add at least one image.');
+      if (
+        !formData.title ||
+        !formData.description ||
+        !formData.price ||
+        !formData.location ||
+        images.length === 0
+      ) {
+        Alert.alert(
+          "Missing Information",
+          "Please fill all required fields and add at least one image."
+        );
         setIsSubmitting(false);
         return;
       }
-      
-      // Skip API call and directly go to success page
+
+      // Get the access token from secure storage
+      let accessToken = await TokenStorage.getAccessToken();
+
+      if (!accessToken) {
+        Alert.alert(
+          "Authentication Error",
+          "You need to be logged in to create a listing. Please log in and try again."
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check if the token is valid before proceeding
+      const isTokenValid = await checkTokenValidity();
+      if (!isTokenValid) {
+        console.log("Token is invalid, attempting to refresh...");
+        const refreshSuccess = await refreshToken();
+
+        if (!refreshSuccess) {
+          Alert.alert(
+            "Session Expired",
+            "Your session has expired. Please log in again.",
+            [
+              {
+                text: "OK",
+                onPress: () => {
+                  // Navigate to login screen
+                  router.push("/(auth)/login" as any);
+                },
+              },
+            ]
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Get the new token after refresh
+        accessToken = await TokenStorage.getAccessToken();
+      }
+
+      // Create FormData for multipart/form-data submission
+      const formDataToSend = new FormData();
+      formDataToSend.append("title", formData.title);
+      formDataToSend.append("description", formData.description);
+      formDataToSend.append("price", formData.price);
+      formDataToSend.append("condition", formData.condition);
+      formDataToSend.append("location", formData.location);
+
+      // Generate a slug from the title
+      const slug = formData.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
+        .replace(/(^-|-$)/g, "") // Remove leading/trailing hyphens
+        .slice(0, 25); // Limit to 25 characters
+      formDataToSend.append("slug", slug);
+
+      // Append all images
+      for (let i = 0; i < images.length; i++) {
+        // For React Native, we need to create a file object from the URI
+        const imageUri = images[i];
+        const filename = imageUri.split("/").pop() || "image.jpg";
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : "image/jpeg";
+
+        // In React Native, we need to use a special format for FormData
+        // @ts-ignore - React Native specific FormData format
+        formDataToSend.append("images", {
+          uri: imageUri,
+          name: filename,
+          type: type,
+        });
+      }
+
+      console.log("Sending form data to backend:");
+      console.log("- Title:", formData.title);
+      console.log(
+        "- Description:",
+        formData.description.substring(0, 30) + "..."
+      );
+      console.log("- Price:", formData.price);
+      console.log("- Condition:", formData.condition);
+      console.log("- Location:", formData.location);
+      console.log("- Slug:", slug);
+      console.log("- Images:", images.length, "files");
+      console.log("- Token:", accessToken ? "Token present" : "No token");
+
+      // Function to make the API request
+      const makeRequest = async (token: string | null) => {
+        if (!token) {
+          throw new Error("No access token available");
+        }
+
+        return await axios.post(
+          "https://backend-deployment-li-2.onrender.com/api/listings/create/",
+          formDataToSend,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      };
+
+      // Try to make the request
+      let response;
+      try {
+        response = await makeRequest(accessToken);
+      } catch (error: any) {
+        // If we get a 401 error, try to refresh the token and retry
+        if (error.response && error.response.status === 401) {
+          console.log("Token expired during request, attempting to refresh...");
+          const refreshSuccess = await refreshToken();
+
+          if (refreshSuccess) {
+            // Get the new token
+            accessToken = await TokenStorage.getAccessToken();
+            if (accessToken) {
+              console.log("Token refreshed successfully, retrying request...");
+              // Retry the request with the new token
+              response = await makeRequest(accessToken);
+            } else {
+              throw new Error("Failed to get new access token after refresh");
+            }
+          } else {
+            // If refresh failed, we need to log in again
+            Alert.alert(
+              "Session Expired",
+              "Your session has expired. Please log in again.",
+              [
+                {
+                  text: "OK",
+                  onPress: () => {
+                    // Navigate to login screen
+                    router.push("/(auth)/login" as any);
+                  },
+                },
+              ]
+            );
+            throw new Error("Token refresh failed");
+          }
+        } else {
+          // If it's not a 401 error, rethrow it
+          throw error;
+        }
+      }
+
+      console.log("Success response:", response.data);
+
+      // Go to success page
       setCurrentStep(4);
-      
+
       // Reset form data silently (but don't clear the view yet)
       setFormData({
         title: "",
@@ -314,12 +529,49 @@ const AddItem = () => {
         price: "",
         category: CATEGORIES[0],
         condition: CONDITIONS[0],
-        location: ""
+        location: "",
       });
-      
-    } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+
+      // Trigger a refresh of the listings page
+      await AsyncStorage.setItem("listings_page_needs_refresh", "true");
+    } catch (error: any) {
+      console.error("Error creating listing:", error);
+
+      let errorMessage = "Something went wrong. Please try again.";
+
+      if (error.response) {
+        console.error("Error status:", error.response.status);
+        console.error("Error data:", error.response.data);
+
+        if (error.response.status === 401) {
+          errorMessage = "Authentication error. Please log in again.";
+        } else if (error.response.data) {
+          if (typeof error.response.data === "object") {
+            const errorMessages: string[] = [];
+
+            // Handle field-specific errors
+            Object.keys(error.response.data).forEach((field) => {
+              const fieldErrors = error.response.data[field];
+
+              if (Array.isArray(fieldErrors)) {
+                errorMessages.push(`${field}: ${fieldErrors.join(", ")}`);
+              } else if (typeof fieldErrors === "string") {
+                errorMessages.push(`${field}: ${fieldErrors}`);
+              }
+            });
+
+            if (errorMessages.length > 0) {
+              errorMessage = errorMessages.join("\n");
+            } else if (error.response.data.detail) {
+              errorMessage = error.response.data.detail;
+            }
+          } else {
+            errorMessage = error.response.data;
+          }
+        }
+      }
+
+      Alert.alert("Error", errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -335,58 +587,72 @@ const AddItem = () => {
     setIsVisible: (isVisible: boolean) => void;
   }
 
-  const CustomDropdown = ({ 
-    label, 
-    options, 
-    selectedValue, 
-    onValueChange, 
-    isVisible, 
-    setIsVisible 
+  const formatConditionDisplay = (condition: string) => {
+    return condition
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  const CustomDropdown = ({
+    label,
+    options,
+    selectedValue,
+    onValueChange,
+    isVisible,
+    setIsVisible,
   }: CustomDropdownProps) => {
     return (
       <>
-        <TouchableOpacity 
-          style={styles.dropdownButton} 
+        <TouchableOpacity
+          style={styles.dropdownButton}
           onPress={() => setIsVisible(true)}
         >
-          <Text style={styles.dropdownButtonText}>{selectedValue}</Text>
+          <Text style={styles.dropdownButtonText}>
+            {label === "Condition"
+              ? formatConditionDisplay(selectedValue)
+              : selectedValue}
+          </Text>
           <Ionicons name="chevron-down" size={20} color="#777" />
         </TouchableOpacity>
-        
+
         <Modal
           transparent={true}
           visible={isVisible}
           animationType="fade"
           onRequestClose={() => setIsVisible(false)}
         >
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalOverlay}
             activeOpacity={1}
             onPress={() => setIsVisible(false)}
           >
             <View style={styles.dropdownModal}>
               <Text style={styles.dropdownModalTitle}>{`Select ${label}`}</Text>
-              
+
               <ScrollView>
                 {options.map((option: string) => (
                   <TouchableOpacity
                     key={option}
                     style={[
                       styles.dropdownItem,
-                      selectedValue === option && styles.selectedDropdownItem
+                      selectedValue === option && styles.selectedDropdownItem,
                     ]}
                     onPress={() => {
                       onValueChange(option);
                       setIsVisible(false);
                     }}
                   >
-                    <Text 
+                    <Text
                       style={[
                         styles.dropdownItemText,
-                        selectedValue === option && styles.selectedDropdownItemText
+                        selectedValue === option &&
+                          styles.selectedDropdownItemText,
                       ]}
                     >
-                      {option}
+                      {label === "Condition"
+                        ? formatConditionDisplay(option)
+                        : option}
                     </Text>
                     {selectedValue === option && (
                       <Ionicons name="checkmark" size={20} color="#0066CC" />
@@ -404,30 +670,33 @@ const AddItem = () => {
   // If loading permissions
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <SafeAreaViewContext style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0066CC" />
         <Text style={styles.loadingText}>Preparing...</Text>
-      </SafeAreaView>
+      </SafeAreaViewContext>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaViewContext style={styles.container} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
-      
+
       {currentStep === 1 && (
         // Step 1: New Add Item First Page
         <View style={styles.firstPageContainer}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="close" size={24} color="#000" />
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons name="close" size={24} color="#333" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>New Post</Text>
             <View style={{ width: 40 }} />
           </View>
-          
+
           <View style={styles.uploadContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.mainUploadButton}
               onPress={pickImage}
             >
@@ -435,26 +704,28 @@ const AddItem = () => {
               <Text style={styles.uploadText}>Select Photos</Text>
               <Text style={styles.uploadSubText}>Choose up to 5 images</Text>
             </TouchableOpacity>
-            
+
             <View style={styles.imagePreviewHeader}>
               <Text style={styles.previewTitle}>
-                {images.length > 0 ? "Selected Photos" : "No photos selected yet"}
+                {images.length > 0
+                  ? "Selected Photos"
+                  : "No photos selected yet"}
               </Text>
               <Text style={styles.imageCounterText}>
                 {images.length}/{MAX_IMAGES} Photos
               </Text>
             </View>
-            
+
             {images.length > 0 ? (
-              <ScrollView 
-                horizontal 
+              <ScrollView
+                horizontal
                 style={styles.thumbnailScroll}
                 showsHorizontalScrollIndicator={false}
               >
                 {images.map((uri, index) => (
                   <View key={index} style={styles.thumbnailContainer}>
                     <Image source={{ uri }} style={styles.thumbnail} />
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.removeImageButton}
                       onPress={() => removeImage(index)}
                     >
@@ -465,9 +736,9 @@ const AddItem = () => {
               </ScrollView>
             ) : null}
           </View>
-          
+
           <View style={styles.divider} />
-          
+
           <View style={styles.bottomButtonContainer}>
             {images.length > 0 ? (
               <TouchableOpacity
@@ -481,9 +752,9 @@ const AddItem = () => {
                 style={[styles.nextPageButton, styles.disabledButton]}
                 onPress={() => {
                   Alert.alert(
-                    'Images Required',
-                    'You must select at least one image before continuing.',
-                    [{text: 'OK'}]
+                    "Images Required",
+                    "You must select at least one image before continuing.",
+                    [{ text: "OK" }]
                   );
                 }}
               >
@@ -493,24 +764,27 @@ const AddItem = () => {
           </View>
         </View>
       )}
-      
+
       {currentStep === 2 && (
         // Step 2: Image Preview and Navigation
-        <View style={styles.secondPageContainer}>
+        <View style={styles.secondPageContainer} className="mb-16">
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => setCurrentStep(1)} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#000" />
+            <TouchableOpacity
+              onPress={() => setCurrentStep(1)}
+              style={styles.backButton}
+            >
+              <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Preview</Text>
             <View style={{ width: 40 }} />
           </View>
-          
+
           {/* Main large image preview */}
           <View style={styles.mainImageContainer}>
             {images.length > 0 ? (
               <View style={styles.mainImageWrapper}>
-                <Image 
-                  source={{ uri: images[mainImageIndex] }} 
+                <Image
+                  source={{ uri: images[mainImageIndex] }}
                   style={styles.mainImage}
                   resizeMode="contain"
                 />
@@ -522,26 +796,26 @@ const AddItem = () => {
               </View>
             )}
           </View>
-          
+
           {/* Footer with thumbnails and action buttons */}
           <View style={styles.previewFooter}>
             {/* Thumbnail row */}
-            <ScrollView 
-              horizontal 
+            <ScrollView
+              horizontal
               style={styles.previewThumbnailRow}
               showsHorizontalScrollIndicator={false}
             >
               {images.map((uri, index) => (
-                <TouchableOpacity 
-                  key={index} 
+                <TouchableOpacity
+                  key={index}
                   style={[
                     styles.previewThumbnail,
-                    mainImageIndex === index && styles.selectedPreviewThumbnail
+                    mainImageIndex === index && styles.selectedPreviewThumbnail,
                   ]}
                   onPress={() => setMainImage(index)}
                 >
                   <Image source={{ uri }} style={styles.thumbnailImage} />
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.removeThumbnailButton}
                     onPress={(e) => {
                       e.stopPropagation();
@@ -553,25 +827,22 @@ const AddItem = () => {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            
+
             {/* Action buttons */}
             <View style={styles.previewActionButtons}>
-              <TouchableOpacity 
-                style={styles.cameraButton}
-                onPress={pickImage}
-              >
+              <TouchableOpacity style={styles.cameraButton} onPress={pickImage}>
                 <Ionicons name="camera" size={24} color="#FFFFFF" />
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.nextStepButton}
                 onPress={() => {
                   // Double-check we have images before proceeding
                   if (images.length === 0) {
                     Alert.alert(
-                      'Images Required',
-                      'You must select at least one image before continuing.',
-                      [{text: 'OK'}]
+                      "Images Required",
+                      "You must select at least one image before continuing.",
+                      [{ text: "OK" }]
                     );
                     // Force back to step 1
                     setCurrentStep(1);
@@ -587,141 +858,166 @@ const AddItem = () => {
           </View>
         </View>
       )}
-      
+
       {currentStep === 3 && (
         // Step 3: Item Details (Title, Description, Price)
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollViewContent}
-          showsVerticalScrollIndicator={false}
-        >
+        <>
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => setCurrentStep(2)} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#000" />
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons name="close" size={24} color="#333" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Item Details</Text>
-            <View style={{ width: 40 }}>
-              <Text> </Text>
-            </View>
+            <View style={{ width: 40 }} />
           </View>
-          
-          {/* Images preview row (view only) */}
-          {images.length > 0 && (
-            <View style={styles.thirdPageImagesContainer}>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                style={styles.thirdPageImagesScroll}
-              >
-                {images.map((uri, index) => (
-                  <View 
-                    key={index} 
-                    style={[
-                      styles.thirdPageImageWrapper,
-                      index === mainImageIndex && styles.thirdPageMainImageWrapper
-                    ]}
-                  >
-                    <Image 
-                      source={{ uri }} 
-                      style={styles.thirdPageImage} 
-                    />
-                    {index === mainImageIndex && (
-                      <View style={styles.mainImageBadge}>
-                        <Text style={styles.mainImageBadgeText}>Main</Text>
-                      </View>
-                    )}
-                  </View>
-                ))}
-              </ScrollView>
-              <Text style={styles.imageCounterText}>
-                {images.length} {images.length === 1 ? 'Photo' : 'Photos'}
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollViewContent}
+            showsVerticalScrollIndicator={false}
+            className="mb-12"
+          >
+            {/* Images preview row (view only) */}
+            {images.length > 0 && (
+              <View style={styles.thirdPageImagesContainer}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.thirdPageImagesScroll}
+                >
+                  {images.map((uri, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.thirdPageImageWrapper,
+                        index === mainImageIndex &&
+                          styles.thirdPageMainImageWrapper,
+                      ]}
+                    >
+                      <Image source={{ uri }} style={styles.thirdPageImage} />
+                      {index === mainImageIndex && (
+                        <View style={styles.mainImageBadge}>
+                          <Text style={styles.mainImageBadgeText}>Main</Text>
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                </ScrollView>
+                <Text style={styles.imageCounterText}>
+                  {images.length} {images.length === 1 ? "Photo" : "Photos"}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Title*</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  formErrors.title ? styles.inputError : null,
+                ]}
+                placeholder="What are you selling?"
+                value={formData.title}
+                onChangeText={(value) => handleInputChange("title", value)}
+                maxLength={100}
+              />
+              {formErrors.title && (
+                <Text style={styles.errorText}>{formErrors.title}</Text>
+              )}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Description*</Text>
+              <TextInput
+                style={[
+                  styles.textArea,
+                  formErrors.description ? styles.inputError : null,
+                ]}
+                placeholder="Describe your item (condition, features, etc.)"
+                value={formData.description}
+                onChangeText={(value) =>
+                  handleInputChange("description", value)
+                }
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+              {formErrors.description && (
+                <Text style={styles.errorText}>{formErrors.description}</Text>
+              )}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Price (₹)*</Text>
+              <View style={styles.priceInputContainer}>
+                <Text style={styles.currencySymbolSmall}>₹</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    formErrors.price ? styles.inputError : null,
+                  ]}
+                  placeholder="0.00"
+                  value={formData.price}
+                  onChangeText={(value) => handleInputChange("price", value)}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              {formErrors.price && (
+                <Text style={styles.errorText}>{formErrors.price}</Text>
+              )}
+              <Text style={styles.priceSuggestionTextSmall}>
+                Similar items are priced between ₹500 - ₹2,000
               </Text>
             </View>
-          )}
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Title*</Text>
-            <TextInput
-              style={[styles.input, formErrors.title ? styles.inputError : null]}
-              placeholder="What are you selling?"
-              value={formData.title}
-              onChangeText={(value) => handleInputChange('title', value)}
-              maxLength={100}
-            />
-            {formErrors.title && <Text style={styles.errorText}>{formErrors.title}</Text>}
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description*</Text>
-            <TextInput
-              style={[styles.textArea, formErrors.description ? styles.inputError : null]}
-              placeholder="Describe your item (condition, features, etc.)"
-              value={formData.description}
-              onChangeText={(value) => handleInputChange('description', value)}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-            {formErrors.description && <Text style={styles.errorText}>{formErrors.description}</Text>}
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Price (₹)*</Text>
-            <View style={styles.priceInputContainer}>
-              <Text style={styles.currencySymbolSmall}>₹</Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Condition*</Text>
+              <View style={styles.pickerContainer}>
+                <CustomDropdown
+                  label="Condition"
+                  options={CONDITIONS}
+                  selectedValue={formData.condition}
+                  onValueChange={(value: string) =>
+                    handleInputChange("condition", value)
+                  }
+                  isVisible={conditionDropdownVisible}
+                  setIsVisible={setConditionDropdownVisible}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Pickup Location*</Text>
               <TextInput
-                style={[styles.input, formErrors.price ? styles.inputError : null]}
-                placeholder="0.00"
-                value={formData.price}
-                onChangeText={(value) => handleInputChange('price', value)}
-                keyboardType="decimal-pad"
+                style={[
+                  styles.input,
+                  formErrors.location ? styles.inputError : null,
+                ]}
+                placeholder="Where can buyers pick this up?"
+                value={formData.location}
+                onChangeText={(value) => handleInputChange("location", value)}
               />
+              {formErrors.location && (
+                <Text style={styles.errorText}>{formErrors.location}</Text>
+              )}
             </View>
-            {formErrors.price && <Text style={styles.errorText}>{formErrors.price}</Text>}
-            <Text style={styles.priceSuggestionTextSmall}>
-              Similar items are priced between ₹500 - ₹2,000
-            </Text>
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Condition*</Text>
-            <View style={styles.pickerContainer}>
-              <CustomDropdown
-                label="Condition"
-                options={CONDITIONS}
-                selectedValue={formData.condition}
-                onValueChange={(value: string) => handleInputChange('condition', value)}
-                isVisible={conditionDropdownVisible}
-                setIsVisible={setConditionDropdownVisible}
-              />
-            </View>
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Pickup Location*</Text>
-            <TextInput
-              style={[styles.input, formErrors.location ? styles.inputError : null]}
-              placeholder="Where can buyers pick this up?"
-              value={formData.location}
-              onChangeText={(value) => handleInputChange('location', value)}
-            />
-            {formErrors.location && <Text style={styles.errorText}>{formErrors.location}</Text>}
-          </View>
-          
-          <TouchableOpacity 
-            style={styles.submitButton} 
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <Text style={styles.submitButtonText}>List</Text>
-            )}
-          </TouchableOpacity>
-        </ScrollView>
+
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Text style={styles.submitButtonText}>List</Text>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        </>
       )}
-      
+
       {currentStep === 4 && (
         // Step 4: Success Screen
         <View style={styles.successContainer}>
@@ -730,55 +1026,77 @@ const AddItem = () => {
               <Ionicons name="checkmark-circle" size={80} color="#4BB543" />
             </View>
             <Text style={styles.successTitle}>Listed Successfully!</Text>
-            {/* <Text style={styles.successMessage}>
+            <Text style={styles.successMessage}>
               Your item has been listed and is now visible to potential buyers.
-            </Text> */}
-            
-            <TouchableOpacity 
-              style={styles.exploreButton} 
-              onPress={() => router.push("/(tabs)/listings")}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.exploreButton}
+              onPress={() => {
+                router.push("/(tabs)/listings");
+              }}
             >
-              <Text style={styles.exploreButtonText}>Explore</Text>
+              <Text style={styles.exploreButtonText}>View Listings</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </SafeAreaViewContext>
   );
 };
 
-const windowWidth = Dimensions.get('window').width;
+const windowWidth = Dimensions.get("window").width;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    borderBottomColor: "#EEEEEE",
+    backgroundColor: "#FFFFFF",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   backButton: {
     padding: 8,
+    borderRadius: 20,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333333',
+    ...Platform.select({
+      ios: {
+        fontWeight: "600",
+      },
+      android: {
+        fontWeight: "700",
+      },
+    }),
+    color: "#333333",
   },
   nextButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
   nextButtonText: {
-    color: '#0066CC',
+    color: "#0066CC",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   scrollView: {
     flex: 1,
@@ -792,163 +1110,163 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 8,
-    color: '#333333',
+    color: "#333333",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: "#DDDDDD",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: "#FAFAFA",
   },
   inputError: {
-    borderColor: '#FF3B30',
+    borderColor: "#FF3B30",
   },
   errorText: {
-    color: '#FF3B30',
+    color: "#FF3B30",
     fontSize: 14,
     marginTop: 4,
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: "#DDDDDD",
     borderRadius: 8,
-    backgroundColor: '#FAFAFA',
-    overflow: 'hidden',
+    backgroundColor: "#FAFAFA",
+    overflow: "hidden",
   },
   dropdownButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 12,
     paddingVertical: 14,
   },
   dropdownButtonText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   dropdownModal: {
-    width: '80%',
-    maxHeight: '60%',
-    backgroundColor: 'white',
+    width: "80%",
+    maxHeight: "60%",
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
   dropdownModalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 16,
-    color: '#333',
-    textAlign: 'center',
+    color: "#333",
+    textAlign: "center",
   },
   dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    borderBottomColor: "#EEEEEE",
   },
   selectedDropdownItem: {
-    backgroundColor: '#F0F7FF',
+    backgroundColor: "#F0F7FF",
   },
   dropdownItemText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   selectedDropdownItemText: {
-    color: '#0066CC',
-    fontWeight: '500',
+    color: "#0066CC",
+    fontWeight: "500",
   },
   submitButton: {
-    backgroundColor: '#0066CC',
+    backgroundColor: "#0066CC",
     borderRadius: 8,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 20,
   },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
-    color: '#0066CC',
+    color: "#0066CC",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginTop: 16,
   },
-  
+
   // Updated styles for first page
   firstPageContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   uploadContainer: {
     padding: 20,
   },
   mainUploadButton: {
-    width: '100%',
+    width: "100%",
     height: 180,
     borderWidth: 1,
-    borderColor: '#DDDDDD',
-    borderStyle: 'dashed',
+    borderColor: "#DDDDDD",
+    borderStyle: "dashed",
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F9F9F9",
     marginBottom: 16,
   },
   uploadText: {
     fontSize: 18,
-    fontWeight: '500',
-    color: '#333333',
+    fontWeight: "500",
+    color: "#333333",
     marginTop: 8,
   },
   uploadSubText: {
     fontSize: 14,
-    color: '#999999',
+    color: "#999999",
     marginTop: 8,
-    textAlign: 'center',
+    textAlign: "center",
     paddingHorizontal: 20,
   },
   imagePreviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 10,
   },
   previewTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
+    fontWeight: "600",
+    color: "#333333",
   },
   imageCounterText: {
     fontSize: 14,
-    color: '#999999',
+    color: "#999999",
   },
   thumbnailScroll: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 16,
   },
   thumbnailContainer: {
@@ -956,30 +1274,30 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 8,
     marginRight: 10,
-    position: 'relative',
-    overflow: 'hidden',
+    position: "relative",
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: '#EEEEEE',
+    borderColor: "#EEEEEE",
   },
   thumbnail: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   removeImageButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 5,
     right: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderRadius: 15,
     width: 24,
     height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   divider: {
     height: 8,
-    backgroundColor: '#F2F2F2',
-    width: '100%',
+    backgroundColor: "#F2F2F2",
+    width: "100%",
   },
   inputArea: {
     padding: 20,
@@ -988,91 +1306,91 @@ const styles = StyleSheet.create({
   titleInput: {
     fontSize: 18,
     borderBottomWidth: 1,
-    borderColor: '#EEEEEE',
+    borderColor: "#EEEEEE",
     paddingVertical: 12,
     marginBottom: 16,
   },
   descriptionInput: {
     fontSize: 16,
     minHeight: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
     paddingTop: 12,
   },
-  
+
   // Bottom button styles
   bottomButtonContainer: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
+    borderTopColor: "#EEEEEE",
   },
   nextPageButton: {
-    backgroundColor: '#0066CC',
+    backgroundColor: "#0066CC",
     borderRadius: 8,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   disabledButton: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: "#CCCCCC",
   },
   nextPageButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
-  
+
   // Styles for the new image preview page (step 2)
   secondPageContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   mainImageContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
   },
   mainImageWrapper: {
-    width: '100%',
-    height: '100%',
-    position: 'relative',
+    width: "100%",
+    height: "100%",
+    position: "relative",
   },
   mainImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   removeMainImageButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 16,
     right: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderRadius: 20,
     width: 36,
     height: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
   noImagePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   noImageText: {
     fontSize: 18,
-    color: '#999999',
+    color: "#999999",
     marginTop: 16,
   },
   previewFooter: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
+    borderTopColor: "#EEEEEE",
     paddingVertical: 10,
   },
   previewThumbnailRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 16,
     marginBottom: 16,
   },
@@ -1081,92 +1399,92 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 4,
     marginRight: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 2,
-    borderColor: 'transparent',
-    position: 'relative',
+    borderColor: "transparent",
+    position: "relative",
   },
   selectedPreviewThumbnail: {
-    borderColor: '#0066CC',
+    borderColor: "#0066CC",
   },
   thumbnailImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   previewActionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 16,
   },
   cameraButton: {
-    backgroundColor: '#666666',
+    backgroundColor: "#666666",
     width: 50,
     height: 50,
     borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   nextStepButton: {
-    backgroundColor: '#0066CC',
+    backgroundColor: "#0066CC",
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   nextStepButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginRight: 8,
   },
   textArea: {
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: "#DDDDDD",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: "#FAFAFA",
     minHeight: 100,
   },
   priceInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: "#DDDDDD",
     borderRadius: 8,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: "#FAFAFA",
     paddingHorizontal: 12,
   },
   currencySymbolSmall: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333333',
+    fontWeight: "bold",
+    color: "#333333",
     marginRight: 8,
   },
   priceSuggestionTextSmall: {
     fontSize: 14,
-    color: '#666666',
+    color: "#666666",
     marginTop: 8,
   },
   removeThumbnailButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 2,
     right: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderRadius: 10,
     width: 20,
     height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   // Third page image styles
   thirdPageImagesContainer: {
     marginBottom: 20,
   },
   thirdPageImagesScroll: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 8,
   },
   thirdPageImageWrapper: {
@@ -1175,42 +1493,42 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#EEEEEE',
-    overflow: 'hidden',
+    borderColor: "#EEEEEE",
+    overflow: "hidden",
   },
   thirdPageMainImageWrapper: {
-    borderColor: '#0066CC',
+    borderColor: "#0066CC",
     borderWidth: 2,
   },
   thirdPageImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   mainImageBadge: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 102, 204, 0.8)',
+    backgroundColor: "rgba(0, 102, 204, 0.8)",
     paddingVertical: 2,
-    alignItems: 'center',
+    alignItems: "center",
   },
   mainImageBadgeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   // Success page styles
   successContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     padding: 20,
   },
   successContent: {
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
     padding: 20,
   },
   successIconContainer: {
@@ -1218,30 +1536,30 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333333',
+    fontWeight: "bold",
+    color: "#333333",
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   successMessage: {
     fontSize: 16,
-    color: '#666666',
-    textAlign: 'center',
+    color: "#666666",
+    textAlign: "center",
     marginBottom: 30,
     lineHeight: 24,
   },
   exploreButton: {
-    backgroundColor: '#0066CC',
+    backgroundColor: "#0066CC",
     borderRadius: 8,
     paddingVertical: 14,
     paddingHorizontal: 24,
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
   },
   exploreButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });
 

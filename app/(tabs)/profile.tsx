@@ -82,14 +82,6 @@ const Profile = () => {
     }, [])
   );
 
-  useFocusEffect(
-    React.useCallback(() => {
-      if (webViewRef.current && webViewUrl) {
-        webViewRef.current.reload();
-      }
-    }, [webViewUrl])
-  );
-
   useEffect(() => {
     if (!isAuthenticated) {
       router.replace("/users/signin");
@@ -193,89 +185,85 @@ const Profile = () => {
           injectedJavaScript={`
             localStorage.setItem('token', '${webViewUrl?.split("token=")[1]}');
             
-            // Prevent navigation to other pages
-            window.addEventListener('click', function(e) {
-              const target = e.target.closest('a');
-              if (target && !target.href.includes('profile')) {
-                e.preventDefault();
-                e.stopPropagation();
-              }
-            }, true);
-
-            // Prevent form submissions to other pages
-            document.addEventListener('submit', function(e) {
-              if (e.target.action && !e.target.action.includes('profile')) {
-                e.preventDefault();
-                e.stopPropagation();
-              }
-            }, true);
-
             (function() {
               const style = document.createElement('style');
               style.textContent = \`
-                nav, header, .navbar, .navigation, [role="navigation"], [class*="nav"], [class*="header"], [class*="Navbar"], [class*="Header"] { 
+                nav, header, .navbar, .navigation { 
                   display: none !important; 
-                  visibility: hidden !important;
-                  opacity: 0 !important;
-                  height: 0 !important;
-                  width: 0 !important;
-                  position: absolute !important;
-                  pointer-events: none !important;
-                  z-index: -9999 !important;
                 }
-                body, html, #__next, main, .container, div {
-                  margin-top: 0 !important;
-                  padding-top: 0 !important;
-                }
-                main.container {
-                  margin: 0 !important;
-                  padding: 8px !important;
-                  margin-top: 0 !important;
-                }
-                .mb-6 {
-                  margin: 0 !important;
-                  padding: 0 !important;
-                }
-                [class*="mt-"], [class*="pt-"] {
-                  margin-top: 0 !important;
-                  padding-top: 0 !important;
+                body {
+                  background-color: #FFFFFF !important;
+                  padding: 0 16px !important;
                 }
                 .profile-container {
-                  margin-top: 0 !important;
-                  padding-top: 0 !important;
+                  max-width: 100% !important;
+                  padding: 24px 0 !important;
+                  margin: 0 !important;
                 }
-                .profile-header {
-                  margin-top: 0 !important;
-                  padding-top: 0 !important;
+                .avatar {
+                  width: 80px !important;
+                  height: 80px !important;
+                  border-radius: 40px !important;
+                  margin-bottom: 16px !important;
+                }
+                .username {
+                  font-size: 24px !important;
+                  font-weight: 600 !important;
+                  color: #000000 !important;
+                  margin-bottom: 8px !important;
+                }
+                .joined-date {
+                  font-size: 15px !important;
+                  color: #666666 !important;
+                  margin-bottom: 24px !important;
+                }
+                .account-details {
+                  background: #F8F8F8 !important;
+                  border-radius: 12px !important;
+                  padding: 16px !important;
+                  margin-bottom: 24px !important;
+                }
+                .reviews-section {
+                  background: #F8F8F8 !important;
+                  border-radius: 12px !important;
+                  padding: 16px !important;
+                  margin-bottom: 24px !important;
+                }
+                .tab-container {
+                  border-top: 1px solid #E5E5E5 !important;
+                  margin: 0 -16px !important;
+                  padding: 0 16px !important;
+                }
+                .tab-button {
+                  font-size: 16px !important;
+                  font-weight: 500 !important;
+                  color: #007AFF !important;
+                  padding: 12px 0 !important;
+                }
+                .tab-button.active {
+                  color: #000000 !important;
+                  border-bottom: 2px solid #007AFF !important;
                 }
               \`;
               document.head.appendChild(style);
 
+              // Remove navigation elements
               const removeNavElements = () => {
-                const navElements = document.querySelectorAll('nav, header, .navbar, .navigation, [role="navigation"], [class*="nav"], [class*="header"], [class*="Navbar"], [class*="Header"]');
-                navElements.forEach(el => {
-                  if (el) el.remove();
-                });
+                const navElements = document.querySelectorAll('nav, header, .navbar, .navigation');
+                navElements.forEach(el => el.remove());
               };
               
               removeNavElements();
               
-              const observer = new MutationObserver((mutations) => {
-                removeNavElements();
-              });
-              
-              observer.observe(document.body, { 
-                childList: true, 
-                subtree: true 
-              });
+              const observer = new MutationObserver(removeNavElements);
+              observer.observe(document.body, { childList: true, subtree: true });
 
+              // Force layout recalculation
               requestAnimationFrame(() => {
                 document.body.style.display = 'none';
                 document.body.offsetHeight;
                 document.body.style.display = '';
               });
-
-              setInterval(removeNavElements, 1000);
             })();
             true;
           `}
@@ -295,19 +283,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    height: 56,
+    height: 60,
     backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: "#E5E5E5",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "600",
-    color: "#333333",
+    color: "#000000",
+    letterSpacing: 0.5,
   },
   backButton: {
     padding: 8,
-    borderRadius: 8,
+    marginLeft: -8,
   },
   headerActions: {
     flexDirection: "row",
@@ -315,22 +312,21 @@ const styles = StyleSheet.create({
   },
   reloadButton: {
     padding: 8,
-    borderRadius: 8,
-    marginRight: 8,
+    marginRight: 4,
   },
   logoutButton: {
     padding: 8,
-    borderRadius: 8,
+    marginRight: -8,
   },
   webviewContainer: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
-    marginTop: 20,
+    backgroundColor: "#FFFFFF",
+    marginTop: 0,
     marginBottom: 40,
   },
   webview: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#FFFFFF",
   },
   loadingContainer: {
     flex: 1,
@@ -339,44 +335,45 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   loadingOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: "rgba(255, 255, 255, 0.98)",
   },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    padding: 16,
+    padding: 20,
   },
   errorText: {
     color: "#FF3B30",
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: 12,
     fontSize: 16,
+    lineHeight: 22,
   },
   retryText: {
     color: "#007AFF",
     textAlign: "center",
-    textDecorationLine: "underline",
     fontSize: 16,
+    fontWeight: "500",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
+    padding: 20,
   },
   emptyText: {
     fontSize: 16,
     color: "#666666",
     textAlign: "center",
+    lineHeight: 22,
   },
 });
 
