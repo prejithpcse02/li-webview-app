@@ -1,93 +1,185 @@
-import { View, Text, TouchableOpacity, Image } from "react-native";
 import React, { useState } from "react";
-import { Link } from "expo-router";
-import { icons } from "@/constants/icons";
+import { View, Text, Image, TouchableOpacity } from "react-native";
+import { useRouter } from "expo-router";
+import { useAuth } from "@/context/AuthContext";
+import LikeButton from "./LikeButton";
 
-interface Product {
-  id: string;
-  p_name: string;
-  p_image: string[]; // Changed to an array of images
-  p_date: string;
-  p_url: string;
-  p_likes: number;
-  p_owner: string;
-  p_price: string;
-  p_short: string;
-  p_desc: string;
-  p_pickup: string;
-  p_liked: string;
-  p_category: string[];
-  p_user_image: string;
-  p_stars: number;
-  p_reviews: {
-    review_stars: number;
-    reviewer_name: string;
-    review_text: string;
-  }[];
+interface ListingCardProps {
+  item?: {
+    product_id: number;
+    slug: string;
+    title: string;
+    description: string;
+    price: number;
+    condition: string;
+    location: string;
+    status: string;
+    created_at: string;
+    seller_name: string;
+    seller_id: number;
+    images: { image_url: string }[];
+    is_liked: boolean;
+    likes_count: number;
+  };
+  id?: string;
+  p_name?: string;
+  p_image?: string[];
+  p_date?: string;
+  p_url?: string;
+  p_likes?: number;
+  p_owner?: string;
+  p_price?: string;
+  p_short?: string;
+  p_desc?: string;
+  p_pickup?: string;
+  p_liked?: string;
+  p_category?: string[];
+  p_user_image?: string;
+  p_reviews?: any[];
+  p_stars?: number;
 }
 
-const ListingCard = ({
-  id,
-  p_name,
-  p_image,
-  p_date,
-  p_url,
-  p_likes,
-  p_owner,
-  p_price,
-  p_desc,
-  p_short,
-  p_pickup,
-  p_liked,
-  p_category,
-  p_user_image,
-  p_stars,
-  p_reviews,
-}: Product) => {
-  const [liked, setLiked] = useState(false);
-  return (
-    <Link href={`/listings/${id}`} asChild>
-      <TouchableOpacity className="w-[48%] bg-white rounded-lg shadow-sm border-[1px] border-gray-100 p-4 pt-6 z-0">
-        <Image
-          source={{ uri: p_image[0] }}
-          className="w-full h-48 rounded-lg mb-3"
-          resizeMode="cover"
-        />
-        <Text className="text-sm font-semibold text-gray-800" numberOfLines={2}>
-          {p_name}
-        </Text>
-        <View className="flex flex-row justify-between items-center">
-          <Text className="text-md font-bold text-primary mt-2">{p_price}</Text>
-          <Text className="text-xs font-bold text-dark-100 mt-2">
-            {p_owner}
-          </Text>
-        </View>
-        <View className="flex flex-row justify-between items-center">
-          <Text className="text-xs font-light text-primary mt-2">
-            {p_short}
-          </Text>
-          <Text className="text-xs font-bold text-primary mt-2">{p_date}</Text>
-        </View>
-        <View className="absolute flex-row top-2 right-2">
-          <Link
-            href="/listings"
-            className={`z-10 ${
-              liked ? "p-1" : "p-2"
-            } flex w-fit bg-gray-50 border-2 border-gray-50 justify-center items-center rounded-full`}
-          >
+const ListingCard: React.FC<ListingCardProps> = (props) => {
+  const router = useRouter();
+  const { user } = useAuth();
+
+  const isDummyData = !!props.id;
+
+  const dummyLikesCount = props.p_likes || 0;
+  const dummyIsLiked = props.p_liked === "true";
+
+  const apiLikesCount = props.item?.likes_count || 0;
+  const apiIsLiked = props.item?.is_liked || false;
+
+  const [likesCount, setLikesCount] = useState(
+    isDummyData ? dummyLikesCount : apiLikesCount
+  );
+  const [isLiked, setIsLiked] = useState(
+    isDummyData ? dummyIsLiked : apiIsLiked
+  );
+
+  const handleLikeChange = (newIsLiked: boolean) => {
+    setIsLiked(newIsLiked);
+    setLikesCount((prev) => (newIsLiked ? prev + 1 : prev - 1));
+  };
+
+  if (isDummyData) {
+    return (
+      <View className="w-full mb-4">
+        <View className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+          <View className="relative aspect-square">
+            {user && (
+              <View className="absolute top-2 right-2 z-50">
+                <LikeButton
+                  listingId={parseInt(props.id || "0")}
+                  initialIsLiked={isLiked}
+                  onLikeChange={handleLikeChange}
+                />
+              </View>
+            )}
             <TouchableOpacity
-              className="z-10"
-              //onPress={() => setLiked(!liked)}
+              onPress={() => router.push(`/listings/${props.id}`)}
             >
               <Image
-                source={p_liked === "true" ? icons.filled : icons.red}
-                className={`${p_liked === "true" ? "size-6" : "size-5"} z-20`}
+                source={{ uri: props.p_image?.[0] }}
+                className="w-full h-full"
+                resizeMode="cover"
               />
             </TouchableOpacity>
-          </Link>
+          </View>
+          <View className="p-4">
+            <Text
+              className="text-sm font-semibold text-gray-800"
+              numberOfLines={2}
+            >
+              {props.p_name}
+            </Text>
+            <View className="flex-row justify-between items-center mt-2">
+              <Text className="text-lg font-bold text-blue-600">
+                {props.p_price}
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push(`/profiles/${props.p_owner}`)}
+              >
+                <Text className="text-xs font-medium text-blue-600">
+                  {props.p_owner}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View className="flex-row justify-between items-center mt-2">
+              <Text className="text-xs text-gray-600" numberOfLines={1}>
+                {props.p_pickup}
+              </Text>
+              <Text className="text-xs font-semibold text-gray-800">
+                {props.p_date
+                  ? new Date(props.p_date).toLocaleDateString()
+                  : ""}
+              </Text>
+            </View>
+          </View>
         </View>
-      </TouchableOpacity>
-    </Link>
+      </View>
+    );
+  }
+
+  const item = props.item;
+  if (!item) return null;
+
+  return (
+    <View className="w-full mb-4">
+      <View className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+        <View className="relative aspect-square">
+          {user && (
+            <View className="absolute top-2 right-2 z-50">
+              <LikeButton
+                listingId={item.product_id}
+                initialIsLiked={isLiked}
+                onLikeChange={handleLikeChange}
+              />
+            </View>
+          )}
+          <TouchableOpacity
+            onPress={() =>
+              router.push(`/listings/${item.slug}/${item.product_id}`)
+            }
+          >
+            <Image
+              source={{ uri: item.images[0].image_url }}
+              className="w-full h-full"
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        </View>
+        <View className="p-4">
+          <Text
+            className="text-sm font-semibold text-gray-800"
+            numberOfLines={2}
+          >
+            {item.title}
+          </Text>
+          <View className="flex-row justify-between items-center mt-2">
+            <Text className="text-lg font-bold text-blue-600">
+              ₹{item.price}
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push(`/profiles/${item.seller_name}`)}
+            >
+              <Text className="text-xs font-medium text-blue-600">
+                {item.seller_name}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View className="flex-row justify-between items-center mt-2">
+            <Text className="text-xs text-gray-600" numberOfLines={1}>
+              {item.location}
+            </Text>
+            <Text className="text-xs font-semibold text-gray-800">
+              {new Date(item.created_at).toLocaleDateString()}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
   );
 };
 

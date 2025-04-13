@@ -17,10 +17,11 @@ import dummy from "@/constants/dummy";
 import ListingBottomBar from "@/components/ListingBottomBar";
 const { width } = Dimensions.get("window");
 
-interface Product {
+// Define a type that matches the dummy data structure
+interface DummyProduct {
   id: string;
   p_name: string;
-  p_image: string[]; // Changed to an array of images
+  p_image: string[];
   p_date: string;
   p_url: string;
   p_likes: number;
@@ -31,12 +32,22 @@ interface Product {
   p_pickup: string;
   p_liked: string;
   p_category: string[];
+  p_user_image: string;
+  p_reviews: {
+    review_text: string;
+    review_stars: number;
+    reviewer_name: string;
+  }[];
+  p_stars: number;
+  product_id?: string;
+  slug?: string;
+  seller_id?: string;
 }
 
 const ItemDetails = () => {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const [data, setData] = useState<Product[] | null>(null);
+  const [data, setData] = useState<DummyProduct[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +61,7 @@ const ItemDetails = () => {
       setError(null);
       //const result = await axios.get(`http://192.168.31.134:3000/listings`);
       //setData(result.data);
-      setData(dummy);
+      setData(dummy as DummyProduct[]);
     } catch (err) {
       setError("Failed to fetch data. Please try again.");
     } finally {
@@ -84,9 +95,14 @@ const ItemDetails = () => {
     );
   }
 
+  const handleDelete = () => {
+    // Refresh the listings data after deletion
+    fetchData();
+  };
+
   return (
     <>
-      <NavClose link="/listings" />
+      <NavClose link="/(tabs)/listings" />
       <View className="bg-gray-100 flex-1 p-4">
         <ScrollView
           contentContainerStyle={{ paddingBottom: 80 }}
@@ -128,20 +144,18 @@ const ItemDetails = () => {
             <Text className="text-xl font-bold text-gray-900">
               {selectedItem.p_name}
             </Text>
-            <View className="flex flex-row justify-between mt-4 items-center">
-              <View className="flex-row gap-2">
-                <Image source={icons.red} className="size-6" />
-                <Text className="text-gray-700 font-semibold">
-                  {selectedItem.p_likes} Likes
-                </Text>
-              </View>
-              <Text className="text-gray-600 font-semibold">
-                Owner:{" "}
-                <Text className="text-blue-600 font-semibold">
-                  {selectedItem.p_owner}
-                </Text>
+            <View className="flex-row gap-2">
+              <Image source={icons.red} className="size-6" />
+              <Text className="text-gray-700 font-semibold">
+                {selectedItem.p_likes} Likes
               </Text>
             </View>
+            <Text className="text-gray-600 font-semibold">
+              Owner:{" "}
+              <Text className="text-blue-600 font-semibold">
+                {selectedItem.p_owner}
+              </Text>
+            </Text>
             <Text className="mt-2 font-medium text-gray-900">
               Posted on:{" "}
               <Text className="font-light text-gray-700">
@@ -163,22 +177,15 @@ const ItemDetails = () => {
               <Text className="font-medium text-gray-900">Pickup</Text>
               <Text className="font-light">{selectedItem.p_pickup}</Text>
             </View>
-
-            {/*<Link
-              href={`/listings/${id}`}
-              className="bg-green-600 mt-8 p-3 rounded-lg items-center"
-              asChild
-            >
-              <TouchableOpacity>
-                <Text className="text-white text-lg font-semibold text-center">
-                  Make Offer
-                </Text>
-              </TouchableOpacity>
-            </Link>*/}
           </View>
         </ScrollView>
       </View>
-      <ListingBottomBar />
+      <ListingBottomBar
+        listingId={parseInt(selectedItem.product_id || selectedItem.id) || 0}
+        slug={selectedItem.slug || selectedItem.id}
+        sellerId={parseInt(selectedItem.seller_id || "0") || 0}
+        onDelete={handleDelete}
+      />
     </>
   );
 };

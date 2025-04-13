@@ -1,303 +1,382 @@
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
-  Image,
-  TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   StyleSheet,
+  TouchableOpacity,
 } from "react-native";
-import React, { useState, useEffect } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "../../context/AuthContext";
+import { TokenStorage } from "../../services/tokenStorage";
+import { WebView } from "react-native-webview";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import NavClose from "@/components/NavClose";
-import dummy from "@/constants/dummy";
-import { FlatList } from "react-native-gesture-handler";
-import ListingCard from "@/components/ListingCard";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import ReviewCard from "@/components/ReviewCard";
-
-interface Product {
-  id: string;
-  p_name: string;
-  p_image: string[];
-  p_date: string;
-  p_url: string;
-  p_likes: number;
-  p_owner: string;
-  p_price: string;
-  p_short: string;
-  p_desc: string;
-  p_pickup: string;
-  p_liked: string;
-  p_category: string[];
-  p_user_image: string;
-  p_stars: number;
-  p_reviews: {
-    review_stars: number;
-    reviewer_name: string;
-    review_text: string;
-  }[];
-}
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 
 const Profile = () => {
-  const [selectedTab, setSelectedTab] = useState("Listings");
-  const [data, setData] = useState<Product[] | null>(null);
-  const [likedItems, setLikedItems] = useState<Product[] | null>(null);
-  const selectedItem = data?.find((item) => item.id === "p01");
-  const selectedListings =
-    data?.filter((item) => item.p_owner === selectedItem?.p_owner) || [];
-  const reviewCount = selectedListings.flatMap((item) => item.p_reviews).length;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated, refreshToken, logout } = useAuth();
+  const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
+  const webViewRef = useRef<WebView>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const allReviews = selectedListings.flatMap((item) => item.p_reviews);
-  const totalReviewStars = allReviews.reduce(
-    (sum, review) => sum + (review.review_stars || 0),
-    0
-  );
-  const averageStars = reviewCount > 0 ? totalReviewStars / reviewCount : 0;
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const prepareWebView = async () => {
     try {
       setLoading(true);
       setError(null);
-      setData(dummy);
-      const likedItems = dummy.filter(
-        (item: Product) => item.p_liked === "true"
-      );
-      setLikedItems(likedItems);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+
+      if (!isAuthenticated) {
+        router.replace("/users/signin");
+        return;
+      }
+
+      let token = await TokenStorage.getAccessToken();
+      if (!token) {
+        const refreshed = await refreshToken();
+        if (!refreshed) {
+          router.replace("/users/signin");
+          return;
+        }
+        token = await TokenStorage.getAccessToken();
+      }
+
+      const url = `https://li-webjs-frontend.vercel.app/profile?token=${token}`;
+      setWebViewUrl(url);
+    } catch (error: any) {
+      setError("Failed to load profile. Please try again later.");
+      console.error("Error preparing WebView:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const Headings = ({ title, isActive, onPress }: any) => {
-    return (
-      <TouchableOpacity onPress={onPress} style={styles.headingContainer}>
-        <Text style={[styles.headingText, isActive && styles.activeHeading]}>
-          {title}
-        </Text>
-        {isActive && <View style={styles.activeIndicator} />}
-      </TouchableOpacity>
-    );
+  const handleNavigationStateChange = (navState: any) => {
+    // If the URL is different from our profile URL, prevent navigation
+    if (navState.url !== webViewUrl) {
+      webViewRef.current?.stopLoading();
+      webViewRef.current?.reload();
+    }
   };
 
-  return (
-    <View style={styles.container}>
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />
-      ) : error ? (
-        <Text style={styles.errorText}>Error: {error}</Text>
-      ) : (
-        <>
-          <NavClose link="/listings" />
+  useFocusEffect(
+    React.useCallback(() => {
+      const checkForRefreshNeeded = async () => {
+        try {
+          const needsRefresh = await AsyncStorage.getItem(
+            "profile_page_needs_refresh"
+          );
+          if (needsRefresh === "true") {
+            await AsyncStorage.removeItem("profile_page_needs_refresh");
+            setRefreshKey((prevKey) => prevKey + 1);
+            handleReload();
+          }
+        } catch (error) {
+          console.error("Error checking refresh status:", error);
+        }
+      };
 
-          <Text style={styles.ownerName}>{selectedItem?.p_owner}</Text>
-          <View style={styles.profileContainer}>
-            <Image
-              source={{ uri: selectedItem?.p_user_image }}
-              style={styles.profileImage}
-              resizeMode="cover"
-            />
-            <View style={styles.reviewContainer}>
-              <View style={styles.starsContainer}>
-                {[1, 2, 3, 4, 5].map((star) => {
-                  const starValue = averageStars - (star - 1);
-                  return (
-                    <Ionicons
-                      key={star}
-                      name={
-                        starValue >= 1
-                          ? "star"
-                          : starValue > 0
-                          ? "star-half"
-                          : "star-outline"
-                      }
-                      size={24}
-                      color="#FFD700"
-                    />
-                  );
-                })}
-              </View>
-              <TouchableOpacity onPress={() => setSelectedTab("Reviews")}>
-                <Text style={styles.reviewText}>{reviewCount} Reviews</Text>
-              </TouchableOpacity>
+      checkForRefreshNeeded();
+    }, [])
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (webViewRef.current && webViewUrl) {
+        webViewRef.current.reload();
+      }
+    }, [webViewUrl])
+  );
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/users/signin");
+      return;
+    }
+    prepareWebView();
+  }, [isAuthenticated]);
+
+  const handleWebViewError = () => {
+    setError("Failed to load profile. Please check your internet connection.");
+  };
+
+  const handleWebViewLoad = () => {
+    setLoading(false);
+  };
+
+  const handleReload = () => {
+    if (webViewRef.current) {
+      webViewRef.current.reload();
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace("/users/signin");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Text style={styles.retryText} onPress={prepareWebView}>
+          Tap to retry
+        </Text>
+      </View>
+    );
+  }
+
+  if (!webViewUrl) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Unable to load profile</Text>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.push("/(tabs)/listings")}
+        >
+          <Ionicons name="close" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
+            <Ionicons name="refresh" size={24} color="#007AFF" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
+          </TouchableOpacity>
+        </View>
+      </View>
+      <View style={styles.webviewContainer}>
+        <WebView
+          key={refreshKey}
+          ref={webViewRef}
+          source={{ uri: webViewUrl }}
+          style={styles.webview}
+          originWhitelist={["*"]}
+          allowUniversalAccessFromFileURLs={true}
+          mixedContentMode="always"
+          onNavigationStateChange={handleNavigationStateChange}
+          onError={handleWebViewError}
+          onLoad={handleWebViewLoad}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          renderLoading={() => (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#0000ff" />
             </View>
-          </View>
-          <View style={styles.tabsContainer}>
-            {["Listings", "Reviews", "Likes"].map((tab) => (
-              <Headings
-                key={tab}
-                title={tab}
-                isActive={tab === selectedTab}
-                onPress={() => setSelectedTab(tab)}
-              />
-            ))}
-          </View>
-          {selectedTab === "Listings" && (
-            <ScrollView
-              style={styles.scrollView}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollViewContent}
-              className="px-2"
-            >
-              <GestureHandlerRootView>
-                <FlatList
-                  data={selectedListings}
-                  renderItem={({ item }) => <ListingCard {...item} />}
-                  keyExtractor={(item) => item.id.toString()}
-                  numColumns={2}
-                  columnWrapperStyle={styles.listingColumn}
-                  scrollEnabled={false}
-                />
-              </GestureHandlerRootView>
-            </ScrollView>
           )}
-          {selectedTab === "Reviews" && (
-            <ScrollView
-              style={styles.scrollView}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollViewContent}
-              className="px-2"
-            >
-              <GestureHandlerRootView>
-                <FlatList
-                  data={selectedListings.flatMap((item) =>
-                    item.p_reviews.map((review) => ({
-                      ...review,
-                      p_image: item.p_image[0],
-                    }))
-                  )}
-                  renderItem={({ item }) => (
-                    <ReviewCard review={item} p_image={item.p_image} />
-                  )}
-                  keyExtractor={(item, index) =>
-                    `${item.reviewer_name}-${index}`
-                  }
-                  scrollEnabled={false}
-                />
-              </GestureHandlerRootView>
-            </ScrollView>
-          )}
-          {selectedTab === "Likes" && (
-            <ScrollView
-              style={styles.scrollView}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollViewContent}
-              className="px-2"
-            >
-              <GestureHandlerRootView>
-                <FlatList
-                  data={likedItems}
-                  renderItem={({ item }) => <ListingCard {...item} />}
-                  keyExtractor={(item) => item.id.toString()}
-                  numColumns={2}
-                  columnWrapperStyle={{
-                    justifyContent: "space-between",
-                    marginBottom: 10,
-                  }}
-                  className="mt-2 pb-32"
-                  scrollEnabled={false}
-                />
-              </GestureHandlerRootView>
-            </ScrollView>
-          )}
-        </>
-      )}
-    </View>
+          incognito={false}
+          cacheEnabled={true}
+          cacheMode="LOAD_DEFAULT"
+          injectedJavaScript={`
+            localStorage.setItem('token', '${webViewUrl?.split("token=")[1]}');
+            
+            // Prevent navigation to other pages
+            window.addEventListener('click', function(e) {
+              const target = e.target.closest('a');
+              if (target && !target.href.includes('profile')) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }, true);
+
+            // Prevent form submissions to other pages
+            document.addEventListener('submit', function(e) {
+              if (e.target.action && !e.target.action.includes('profile')) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }, true);
+
+            (function() {
+              const style = document.createElement('style');
+              style.textContent = \`
+                nav, header, .navbar, .navigation, [role="navigation"], [class*="nav"], [class*="header"], [class*="Navbar"], [class*="Header"] { 
+                  display: none !important; 
+                  visibility: hidden !important;
+                  opacity: 0 !important;
+                  height: 0 !important;
+                  width: 0 !important;
+                  position: absolute !important;
+                  pointer-events: none !important;
+                  z-index: -9999 !important;
+                }
+                body, html, #__next, main, .container, div {
+                  margin-top: 0 !important;
+                  padding-top: 0 !important;
+                }
+                main.container {
+                  margin: 0 !important;
+                  padding: 8px !important;
+                  margin-top: 0 !important;
+                }
+                .mb-6 {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                }
+                [class*="mt-"], [class*="pt-"] {
+                  margin-top: 0 !important;
+                  padding-top: 0 !important;
+                }
+                .profile-container {
+                  margin-top: 0 !important;
+                  padding-top: 0 !important;
+                }
+                .profile-header {
+                  margin-top: 0 !important;
+                  padding-top: 0 !important;
+                }
+              \`;
+              document.head.appendChild(style);
+
+              const removeNavElements = () => {
+                const navElements = document.querySelectorAll('nav, header, .navbar, .navigation, [role="navigation"], [class*="nav"], [class*="header"], [class*="Navbar"], [class*="Header"]');
+                navElements.forEach(el => {
+                  if (el) el.remove();
+                });
+              };
+              
+              removeNavElements();
+              
+              const observer = new MutationObserver((mutations) => {
+                removeNavElements();
+              });
+              
+              observer.observe(document.body, { 
+                childList: true, 
+                subtree: true 
+              });
+
+              requestAnimationFrame(() => {
+                document.body.style.display = 'none';
+                document.body.offsetHeight;
+                document.body.style.display = '';
+              });
+
+              setInterval(removeNavElements, 1000);
+            })();
+            true;
+          `}
+        />
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#FFFFFF",
   },
-  loader: {
-    marginTop: 10,
-    alignSelf: "center",
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    height: 56,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5E5",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333333",
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  reloadButton: {
+    padding: 8,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  logoutButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  webviewContainer: {
+    flex: 1,
+    backgroundColor: "#F5F5F5",
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  webview: {
+    flex: 1,
+    backgroundColor: "#F5F5F5",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    padding: 16,
   },
   errorText: {
-    color: "red",
+    color: "#FF3B30",
     textAlign: "center",
-    marginTop: 5,
-  },
-  ownerName: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginVertical: 10,
-    marginHorizontal: 20,
-  },
-  profileContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginHorizontal: 20,
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
-    borderColor: "#ccc",
-  },
-  reviewContainer: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 10,
-    marginLeft: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  starsContainer: {
-    flexDirection: "row",
-    marginBottom: 5,
-  },
-  reviewText: {
-    color: "#ff6347",
+    marginBottom: 10,
     fontSize: 16,
   },
-  tabsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginVertical: 10,
+  retryText: {
+    color: "#007AFF",
+    textAlign: "center",
+    textDecorationLine: "underline",
+    fontSize: 16,
   },
-  headingContainer: {
-    alignItems: "center",
-  },
-  headingText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  activeHeading: {
-    color: "#007bff",
-  },
-  activeIndicator: {
-    width: "100%",
-    height: 2,
-    backgroundColor: "#007bff",
-    marginTop: 2,
-  },
-  scrollView: {
+  emptyContainer: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
   },
-  scrollViewContent: {
-    paddingBottom: 10,
-  },
-  listingColumn: {
-    justifyContent: "space-between",
-    marginBottom: 10,
+  emptyText: {
+    fontSize: 16,
+    color: "#666666",
+    textAlign: "center",
   },
 });
 

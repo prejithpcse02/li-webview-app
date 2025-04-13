@@ -1,110 +1,377 @@
+// li-app/app/(tabs)/likes.tsx
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
-  ScrollView,
   ActivityIndicator,
-  FlatList,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+  Platform,
 } from "react-native";
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-//import SearchBar from "@/components/SearchBar";
-import { useRouter } from "expo-router";
-import ListingCard from "@/components/ListingCard";
-import dummy from "@/constants/dummy";
-interface Product {
-  id: string;
-  p_name: string;
-  p_image: string[];
-  p_date: string;
-  p_url: string;
-  p_likes: number;
-  p_owner: string;
-  p_price: string;
-  p_short: string;
-  p_desc: string;
-  p_pickup: string;
-  p_liked: string;
-  p_category: string[];
-  p_user_image: string;
-  p_stars: number;
-  p_reviews: {
-    review_stars: number;
-    reviewer_name: string;
-    review_text: string;
-  }[];
-}
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "../../context/AuthContext";
+import { TokenStorage } from "../../services/tokenStorage";
+import { WebView } from "react-native-webview";
+import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
+import Constants from "expo-constants";
 
-const likes = () => {
-  const [data, setData] = useState<Product[] | null>(null);
+const Likes = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const { isAuthenticated, refreshToken } = useAuth();
+  const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
+  const webViewRef = useRef<WebView>(null);
+  const [refreshKey, setRefreshKey] = useState(0); // Add a refresh key to force WebView reload
+  const [lastRefreshTime, setLastRefreshTime] = useState<number>(Date.now());
 
-  useEffect(() => {
-    fetchDataLiked();
-  }, []);
-
-  const fetchDataLiked = async () => {
+  const prepareWebView = async () => {
     try {
       setLoading(true);
       setError(null);
-      //const result = await axios("http://192.168.31.134:3000/listings");
-      /*const likedItems = result.data.filter(
-        (item: Product) => item.p_liked === "true"
-      );*/
-      const likedItems = dummy.filter(
-        (item: Product) => item.p_liked === "true"
-      );
-      setData(likedItems);
-    } catch (error) {
-      // @ts-ignore
-      setError(error instanceof Error ? error : new Error("An error occured"));
+
+      if (!isAuthenticated) {
+        router.replace("/users/signin");
+        return;
+      }
+
+      let token = await TokenStorage.getAccessToken();
+      if (!token) {
+        const refreshed = await refreshToken();
+        if (!refreshed) {
+          router.replace("/users/signin");
+          return;
+        }
+        token = await TokenStorage.getAccessToken();
+      }
+
+      // Set the URL to the web frontend liked page with the token
+      const url = `https://li-webjs-frontend.vercel.app/liked?token=${token}`;
+      setWebViewUrl(url);
+    } catch (error: any) {
+      setError("Failed to load liked listings. Please try again later.");
+      console.error("Error preparing WebView:", error);
     } finally {
       setLoading(false);
     }
   };
 
+  // Check for like/unlike events when the page gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const checkForRefreshNeeded = async () => {
+        try {
+          // Check if we need to refresh based on the flag
+          const needsRefresh = await AsyncStorage.getItem(
+            "likes_page_needs_refresh"
+          );
+
+          // Also check if there are any recent like events
+          const allKeys = await AsyncStorage.getAllKeys();
+          const likeEventKeys = allKeys.filter((key) =>
+            key.startsWith("like_event_")
+          );
+
+          // Get the most recent like event
+          let mostRecentEventTime = 0;
+          for (const key of likeEventKeys) {
+            const eventData = await AsyncStorage.getItem(key);
+            if (eventData) {
+              try {
+                const event = JSON.parse(eventData);
+                const eventTime = new Date(event.timestamp).getTime();
+                if (eventTime > mostRecentEventTime) {
+                  mostRecentEventTime = eventTime;
+                }
+              } catch (e) {
+                console.error("Error parsing event data:", e);
+              }
+            }
+          }
+
+          // If we have a recent event (within the last 30 seconds) or the refresh flag is set
+          const shouldRefresh =
+            needsRefresh === "true" ||
+            (mostRecentEventTime > lastRefreshTime &&
+              mostRecentEventTime > Date.now() - 30000);
+
+          if (shouldRefresh) {
+            console.log("Refreshing likes page due to recent activity");
+            // Clear the refresh flag
+            await AsyncStorage.removeItem("likes_page_needs_refresh");
+            // Update the last refresh time
+            setLastRefreshTime(Date.now());
+            // Reload the WebView by updating the refresh key
+            setRefreshKey((prevKey) => prevKey + 1);
+            // Also call handleReload for immediate refresh
+            handleReload();
+          }
+        } catch (error) {
+          console.error("Error checking refresh status:", error);
+        }
+      };
+
+      // Check immediately when the page gains focus
+      checkForRefreshNeeded();
+
+      // Set up an interval to check periodically while the page is focused
+      const intervalId = setInterval(checkForRefreshNeeded, 5000);
+
+      // Clean up the interval when the page loses focus
+      return () => clearInterval(intervalId);
+    }, [lastRefreshTime])
+  );
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/users/signin");
+      return;
+    }
+    prepareWebView();
+  }, [isAuthenticated]);
+
+  const handleWebViewError = () => {
+    setError(
+      "Failed to load liked listings. Please check your internet connection."
+    );
+  };
+
+  const handleWebViewLoad = () => {
+    setLoading(false);
+  };
+
+  const handleReload = () => {
+    if (webViewRef.current) {
+      webViewRef.current.reload();
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Text style={styles.retryText} onPress={prepareWebView}>
+          Tap to retry
+        </Text>
+      </View>
+    );
+  }
+
+  if (!webViewUrl) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Unable to load liked listings</Text>
+      </View>
+    );
+  }
+
   return (
-    <View className="flex-1 bg-white pt-2">
-      {/*<SearchBar
-        onPress={() => router.push("/listings")}
-        placeholder="Search for an item"
-      />*/}
-      <ScrollView
-        className="flex-1 px-5"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ minHeight: "100%", paddingBottom: 10 }}
-      >
-        {loading ? (
-          <ActivityIndicator
-            size="large"
-            color="#0000ff"
-            className="mt-10 self-center"
-          />
-        ) : error ? (
-          <Text className="text-red-500 text-center mt-5">Error: {error}</Text>
-        ) : (
-          <View className="flex-1 mt-3">
-            <Text className="text-lg text-primary font-bold mt-5 mb-3">
-              Liked listings
-            </Text>
-            <FlatList
-              data={data}
-              renderItem={({ item }) => <ListingCard {...item} />}
-              keyExtractor={(item) => item.id.toString()}
-              numColumns={2}
-              columnWrapperStyle={{
-                justifyContent: "space-between",
-                marginBottom: 10,
-              }}
-              className="mt-2 pb-32"
-              scrollEnabled={false}
-            />
-          </View>
-        )}
-      </ScrollView>
-    </View>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.push("/(tabs)/listings")}
+        >
+          <Ionicons name="close" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Liked Items</Text>
+        <TouchableOpacity style={styles.reloadButton} onPress={handleReload}>
+          <Ionicons name="refresh" size={24} color="#007AFF" />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.webviewContainer}>
+        <WebView
+          key={refreshKey}
+          ref={webViewRef}
+          source={{ uri: webViewUrl }}
+          style={styles.webview}
+          originWhitelist={["*"]}
+          allowUniversalAccessFromFileURLs={true}
+          mixedContentMode="always"
+          onError={handleWebViewError}
+          onLoad={handleWebViewLoad}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          renderLoading={() => (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#007AFF" />
+            </View>
+          )}
+          incognito={false}
+          cacheEnabled={true}
+          cacheMode="LOAD_DEFAULT"
+          injectedJavaScript={`
+            localStorage.setItem('token', '${webViewUrl.split("token=")[1]}');
+            
+            (function() {
+              const style = document.createElement('style');
+              style.textContent = \`
+                nav, header, .navbar, .navigation, [role="navigation"], [class*="nav"], [class*="header"], [class*="Navbar"], [class*="Header"] { 
+                  display: none !important; 
+                  visibility: hidden !important;
+                  opacity: 0 !important;
+                  height: 0 !important;
+                  width: 0 !important;
+                  position: absolute !important;
+                  pointer-events: none !important;
+                  z-index: -9999 !important;
+                }
+                body, html, #__next, main, .container, div {
+                  margin-top: 0 !important;
+                  padding-top: 0 !important;
+                }
+                main.container {
+                  margin: 0 !important;
+                  padding: 8px !important;
+                  margin-top: 0 !important;
+                }
+                .mb-6 {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                }
+                [class*="mt-"], [class*="pt-"] {
+                  margin-top: 0 !important;
+                  padding-top: 0 !important;
+                }
+                .grid {
+                  gap: 12px !important;
+                  padding: 8px !important;
+                }
+                .card {
+                  border-radius: 12px !important;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                }
+              \`;
+              document.head.appendChild(style);
+
+              const removeNavElements = () => {
+                const navElements = document.querySelectorAll('nav, header, .navbar, .navigation, [role="navigation"], [class*="nav"], [class*="header"], [class*="Navbar"], [class*="Header"]');
+                navElements.forEach(el => {
+                  if (el) el.remove();
+                });
+              };
+              
+              removeNavElements();
+              
+              const observer = new MutationObserver((mutations) => {
+                removeNavElements();
+              });
+              
+              observer.observe(document.body, { 
+                childList: true, 
+                subtree: true 
+              });
+
+              requestAnimationFrame(() => {
+                document.body.style.display = 'none';
+                document.body.offsetHeight;
+                document.body.style.display = '';
+              });
+
+              setInterval(removeNavElements, 1000);
+            })();
+            true;
+          `}
+        />
+      </View>
+    </SafeAreaView>
   );
 };
 
-export default likes;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    height: 56,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5E5",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333333",
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  reloadButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  webviewContainer: {
+    flex: 1,
+    backgroundColor: "#F5F5F5",
+  },
+  webview: {
+    flex: 1,
+    backgroundColor: "#F5F5F5",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+  },
+  errorText: {
+    color: "#FF3B30",
+    textAlign: "center",
+    marginBottom: 10,
+    fontSize: 16,
+  },
+  retryText: {
+    color: "#007AFF",
+    textAlign: "center",
+    textDecorationLine: "underline",
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666666",
+    textAlign: "center",
+  },
+});
+
+export default Likes;
